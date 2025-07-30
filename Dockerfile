@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # Copyright (c) 2020 The Regents of the University of California
 # All Rights Reserved.
 #
@@ -26,7 +27,6 @@
 FROM ghcr.io/psal-postech/torchsim_base:latest
 
 # Pass Access Token securely
-ARG GIT_ACCESS_TOKEN
 ARG GEM5_ASSET_ID
 ARG LLVM_ASSET_ID
 ARG TORCHSIM_SHA
@@ -34,14 +34,18 @@ ENV PATH $PATH:/root/.local/bin
 ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu:/opt/conda/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:$LD_LIBRARY_PATH
 
 # Download GEM5 for torchsim
-RUN curl -L -H "Accept: application/octet-stream" -H "Authorization: Bearer ${GIT_ACCESS_TOKEN}"  https://api.github.com/repos/PSAL-POSTECH/gem5/releases/assets/${GEM5_ASSET_ID} -o /tmp/gem5-release.tar.gz && \
+RUN --mount=type=secret,id=GIT_ACCESS_TOKEN \
+    GIT_ACCESS_TOKEN=$(cat /run/secrets/GIT_ACCESS_TOKEN) && \
+    curl -L -H "Accept: application/octet-stream" -H "Authorization: Bearer ${GIT_ACCESS_TOKEN}" https://api.github.com/repos/PSAL-POSTECH/gem5/releases/assets/${GEM5_ASSET_ID} -o /tmp/gem5-release.tar.gz && \
     mkdir -p /gem5 && \
     tar -xzf /tmp/gem5-release.tar.gz -C /gem5 && \
     rm /tmp/gem5-release.tar.gz
 ENV GEM5_PATH /gem5/release/gem5.opt
 
 # Download LLVM RISC-V for torchsim
-RUN curl -L -H "Accept: application/octet-stream" -H "Authorization: Bearer ${GIT_ACCESS_TOKEN}"  https://api.github.com/repos/PSAL-POSTECH/llvm-project/releases/assets/${LLVM_ASSET_ID} -o /tmp/riscv-llvm-release.tar.gz && \
+RUN --mount=type=secret,id=GIT_ACCESS_TOKEN \
+    GIT_ACCESS_TOKEN=$(cat /run/secrets/GIT_ACCESS_TOKEN) && \
+    curl -L -H "Accept: application/octet-stream" -H "Authorization: Bearer ${GIT_ACCESS_TOKEN}"  https://api.github.com/repos/PSAL-POSTECH/llvm-project/releases/assets/${LLVM_ASSET_ID} -o /tmp/riscv-llvm-release.tar.gz && \
     tar -xzf /tmp/riscv-llvm-release.tar.gz -C / && \
     rm /tmp/riscv-llvm-release.tar.gz
 
@@ -52,18 +56,20 @@ ENV TORCHSIM_DIR /workspace/PyTorchSim
 ENV LLVM_DIR /riscv-llvm
 
 # Install Spike simulator
-RUN git clone https://${GIT_ACCESS_TOKEN}@github.com/PSAL-POSTECH/riscv-isa-sim.git --branch TorchSim && cd riscv-isa-sim && mkdir build && cd build && \
-    ../configure --prefix=$RISCV && make -j && make install
+RUN --mount=type=secret,id=GIT_ACCESS_TOKEN \
+    GIT_ACCESS_TOKEN=$(cat /run/secrets/GIT_ACCESS_TOKEN) && \
+    git clone https://$GIT_ACCESS_TOKEN@github.com/PSAL-POSTECH/riscv-isa-sim.git --branch TorchSim && cd riscv-isa-sim && mkdir build && cd build && \
+    ../configure --prefix=$RISCV && make -j && make install && cd ../../ && rm -rf riscv-isa-sim
 
 # Install Proxy kernel
 RUN git clone https://github.com/riscv-software-src/riscv-pk.git && \
      cd riscv-pk && git checkout 4f3debe4d04f56d31089c1c716a27e2d5245e9a1 && mkdir build && cd build && \
-    ../configure --prefix=$RISCV --host=riscv64-unknown-elf && make -j && make install
+    ../configure --prefix=$RISCV --host=riscv64-unknown-elf && make -j && make install && cd ../../ && rm -rf riscv-pk
 
-# Prepare ONNXim project
-RUN git clone https://${GIT_ACCESS_TOKEN}@github.com/PSAL-POSTECH/PyTorchSim.git && cd PyTorchSim && git checkout ${TORCHSIM_SHA}
+# Prepare PyTorchSim project
+COPY . /workspace/PyTorchSim
+
 RUN cd PyTorchSim/PyTorchSimBackend && \
-    git submodule update --recursive --init && \
     mkdir -p build && \
     cd build && \
     conan install .. --build=missing && \

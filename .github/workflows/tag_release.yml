@@ -17,6 +17,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          repository: PSAL-POSTECH/PyTorchSim
+          ref: ${{ github.ref_name }}
+          submodules: recursive
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -52,9 +56,7 @@ jobs:
           echo "DUMP_PATH=/tmp/torchsim-ci/${GITHUB_SHA}"
 
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v4
-        env:
-          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -62,6 +64,7 @@ jobs:
           build-args: |
             GEM5_ASSET_ID=${{ env.GEM5_ASSET_ID }}
             LLVM_ASSET_ID=${{ env.LLVM_ASSET_ID }}
-            GIT_ACCESS_TOKEN=${{ env.GIT_ACCESS_TOKEN }}
             TORCHSIM_SHA=${{ env.GITHUB_SHA }}
+          secrets: |
+            GIT_ACCESS_TOKEN=${{ secrets.GIT_ACCESS_TOKEN }}
           tags: ghcr.io/psal-postech/${{ env.IMAGE_TAG}}

@@ -18,8 +18,10 @@ jobs:
       # Step 1: Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v4
-      # Step 2: Log in to GitHub Container Registry (optional)
-      # If you need to push the built image, authenticate here.
+        with:
+          repository: PSAL-POSTECH/PyTorchSim
+          ref: ${{ env.GITHUB_SHA }}
+          submodules: recursive
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -53,9 +55,7 @@ jobs:
 
       # Step 4: Build and Push Docker Image
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v4
-        env:
-          GIT_ACCESS_TOKEN: ${{ secrets.GIT_ACCESS_TOKEN }}
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -63,8 +63,9 @@ jobs:
           build-args: |
             GEM5_ASSET_ID=${{ env.GEM5_ASSET_ID }}
             LLVM_ASSET_ID=${{ env.LLVM_ASSET_ID }}
-            GIT_ACCESS_TOKEN=${{ env.GIT_ACCESS_TOKEN }}
             TORCHSIM_SHA=${{ env.GITHUB_SHA }}
+          secrets: |
+            GIT_ACCESS_TOKEN=${{ secrets.GIT_ACCESS_TOKEN }}
           tags: ghcr.io/psal-postech/${{ env.IMAGE_TAG }}
 
   test_add:

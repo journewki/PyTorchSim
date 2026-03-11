@@ -1,3 +1,5 @@
+# This is a python wrapper for each functional, cycle, TOGSim, which Scheduler class utilizes to communicate with TOGSim, Gem5, and Spike simulator
+
 import os
 import shlex
 import ctypes
@@ -70,11 +72,14 @@ TORCH_TO_NUMPY = {
     torch.bfloat16: np.float16,
 }
 
+
+# Python Frontend to RISC-V Spike Simulator for verification
 class FunctionalSimulator():
     def __init__(self, path, key):
         self.path = path
         self.key = key
 
+    # Load tensor from path to raw file
     def load_tensor(self, arg, arg_name, arg_attribute, path):
         # path = os.path.join(dump_path, arg_name, f'{n_call}.raw')
         with open(path, 'rb') as f:
@@ -82,9 +87,11 @@ class FunctionalSimulator():
             src_tensor = torch.as_strided(torch.from_numpy(np_array), arg.size(), arg.stride())
             arg.copy_(src_tensor.to(dtype=arg.dtype))
 
+    # Unlike its name, it returns file count inside path directory
     def get_biggest_filename(self, path):
         return len(os.listdir(path))
 
+    # Save tensor file(arg) as .raw file in path
     def write_arg(self, arg, path, name):
         dump_path = os.path.join(path, name)
         os.makedirs(dump_path, exist_ok=True)
@@ -101,6 +108,12 @@ class FunctionalSimulator():
             assert(0)
         return index
 
+    # args: tensor
+    # arg_attribute: metadata of each tensor
+    # load_path: input tensor path
+    # dump_path: output tensor path
+    # For each tensor, return its size and path(input tensor→ load/ output tensor → dump)
+    # These pathes will later used by simulator to load or save tensors 
     def dump_args(self, args, arg_attributes, load_path, dump_path):
         array_size = []
         file_path = []
@@ -117,6 +130,8 @@ class FunctionalSimulator():
 
         return array_size, file_path
 
+    # Run Spike simulator
+    # Examine bin file and get start, end address of kernel -> Get input, output tensor path -> Set HW info -> Run Spike command 
     def run_spike(self, args, arg_attributes, runtime_path, binary, vectorlane_size=4, spad_info=None, cleanup=False, silent_mode=False):
         load_path = runtime_path
         dump_path = runtime_path
@@ -190,10 +205,15 @@ class FunctionalSimulator():
         os.makedirs(full_path)
         return full_path
 
+
+# Python Frontend to Gem5 Simulator for cycle-based simulation
 class CycleSimulator():
     def __init__(self) -> None:
         pass
 
+    # Get path for gem5 simulator bin and run command
+    # If dryrun, just get the output and if not dryrun, print logs
+    # Return cycle_list, which holds cycle each kernel used for execution. Kernel is compiled binary file to be executed. 
     def compile_and_simulate(self, target_binary, vectorlane_size, silent_mode=False):
         dir_path = os.path.join(os.path.dirname(target_binary), "m5out")
         gem5_script_path = os.path.join(extension_config.CONFIG_TORCHSIM_DIR, "gem5_script/script_systolic.py")
@@ -218,20 +238,28 @@ class CycleSimulator():
         cycle_list = cycle_list[:-1]
         return cycle_list
 
+
+
+# Python Frontend to TOGSimulator == TOGSIM/build/bin/Simulator, sending commands and getting result
+# Especially, Scheduler object calls python TOGSimulator object's objects to communicate with C++ TOGSim simulator bin. 
+# Manage kernel execution by communicating with the TOGSim process via FIFO
 class TOGSimulator():
     TOGSIM_RESULT_PATH_KEY = "TOGSIM_RESULT_PATH"
     FINISH_STR = "Simulation finished"
     ALLOC_POOL = dict() # For eagermode buffer plan
+
+    # Initialization: loads config, creates FIFO files, starts TOGSim process, opens trace file
     def __init__(self, config_path=None, togsim_path=None) -> None:
         if config_path is None:
             config_path = extension_config.CONFIG_TOGSIM_CONFIG
         if togsim_path is None:
             togsim_path = os.path.join(extension_config.CONFIG_TORCHSIM_DIR, "TOGSim")
 
-        self.base_dir = togsim_path
+
+        self.base_dir = togsim_path # Path for TOGSim simulator bin
         self.config_path = config_path
         self.config_yaml = self.load_yaml(self.config_path)
-        self.process = None
+        self.process = None # Process that is executing 
         self._next_kernel_id = 0  # Auto-incrementing kernel ID
 
         # Create FIFOs for command and event communication
@@ -256,6 +284,8 @@ class TOGSimulator():
             logger.error(f"[TOGSim] Failed to open trace file: {e}")
             raise RuntimeError(f"Failed to open trace file: {e}")
 
+
+    # Context manager entry: registers this instance as the global TOGSimulator
     def __enter__(self):
         """Context manager entry."""
         # Set this simulator instance as the global TOGSimulator
@@ -263,12 +293,15 @@ class TOGSimulator():
         torch.npu.set_tog_simulator(self)
         return self
 
+    # Context manager exit: calls until(), then restores the previous global TOGSimulator
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit - automatically cleanup."""
         # Reset global TOGSimulator to None
         self.until()
         torch.npu.set_tog_simulator(self.old_tog_simulator)
 
+
+    # Launch the TOGSim binary as a subprocess. Log a warning if already running
     def _start_process(self):
         cmd = f"{self.get_togsim_command(self.config_path, self.base_dir)} --models_list {self.trace_file_path}"
         if extension_config.CONFIG_TOGSIM_DEBUG_LEVEL:
@@ -285,6 +318,8 @@ class TOGSimulator():
         else:
             logger.warning("[TOGSim] Simulator is already running.")
 
+
+    # Remove FIFO files and the temporary working directory
     def _cleanup_fifos(self):
         """Clean up FIFO files"""
         try:
@@ -295,6 +330,11 @@ class TOGSimulator():
         except OSError as e:
             logger.warning(f"[TOGSim] Failed to clean up FIFOs: {e}")
 
+
+    # Send a command to TOGSim via FIFO
+    # Format: "command_type,kernel_id,device_index,stream_index,tog_path,attribute_path,timestamp"
+    # kernel_id auto-increments on each call and is also recorded in trace_log
+    # It returns assigned kernel_id (int)
     def _send_command(self, command_type, device_index, stream_index, tog_path="", attribute_path="", timestamp=0):
         """
         Internal method to send a command to TOGSim via FIFO.
@@ -335,6 +375,8 @@ class TOGSimulator():
                 raise RuntimeError(f"Failed to send command to TOGSim: {e}")
         return kernel_id
 
+    # Synchronize all streams (torch.npu.synchronize), then wait for TOGSim process to finish
+    # Save stdout → .log file, trace_log → .trace file. Clean up FIFOs
     def until(self):
         # Make sure that all kernels in the stream are finished
         torch.npu.synchronize()
@@ -387,6 +429,9 @@ class TOGSimulator():
         # Clean up FIFOs
         self._cleanup_fifos()
 
+
+    # Launch kernel by calling _send_command("LAUNCH_KERNEL", ...) to request kernel execution
+    # Return assigned kernel_id
     def launch_kernel(self, device_index, stream_index, tog_path, attribute_path, timestamp=0):
         """
         Launch a kernel via FIFO communication.
@@ -403,6 +448,9 @@ class TOGSimulator():
         """
         return self._send_command("LAUNCH_KERNEL", device_index, stream_index, tog_path, attribute_path, timestamp)
 
+
+    # Call _send_command("DEVICE_SYNC", ...) to synchronize all streams on a given device
+    # Return assigned command_id (int)
     def device_synchronize(self, device_index):
         """
         Synchronize all streams on a device via FIFO communication.
@@ -418,14 +466,19 @@ class TOGSimulator():
         return self._send_command("DEVICE_SYNC", device_index, 0, "", "", 0)
 
     @classmethod
+    # Register an SRAM buffer in ALLOC_POOL (class variable). Used for eager mode buffer planning.
     def sram_alloc(cls, buf_name, addr_range):
         cls.ALLOC_POOL[buf_name] = addr_range
 
     @classmethod
+    # Remove an SRAM buffer entry from ALLOC_POOL
     def sram_dealloc(cls, buf_name, addr_range):
         if buf_name in cls.ALLOC_POOL:
             del cls.ALLOC_POOL[buf_name]
 
+
+    # Write input tensor address info and SRAM allocation info to a YAML file
+    # Return path to the created attribute file
     def create_attribute_file(self, attribute_path, inputs, **kwargs):
         address_info = {}
         sram_buffer = {}
@@ -449,6 +502,8 @@ class TOGSimulator():
             os.fsync(f.fileno()) # There could be a race condition.
         return attribute_path
 
+
+    # Load a YAML config file and returns it as a dict. 
     def load_yaml(self, config_path):
         config_path = Path(config_path)
         if not config_path.is_file():
@@ -461,12 +516,17 @@ class TOGSimulator():
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML format: {e}")
 
+
+    # Read core_freq_mhz from the config YAML and returns it in Hz
     def get_core_freq(self):
         if "core_freq_mhz" in self.config_yaml:
             return self.config_yaml["core_freq_mhz"] * 1000 * 1000 # MHz
         else:
             raise KeyError("Key 'core_freq' not found in JSON.")
 
+
+    # Build and return the TOGSim launch command string
+    # Format: "{bin} --config {config}”
     @staticmethod
     def get_togsim_command(config_path, togsim_path=None):
         if togsim_path is None:
@@ -476,6 +536,11 @@ class TOGSimulator():
         cmd = f"{bin} --config {config}"
         return cmd
 
+
+
+    # Run a single kernel in a standalone process (no streaming needed)
+    # Create a trace file → runs TOGSim → saves output to a .log file
+    # Return a  path to the result log file
     @staticmethod
     def run_standalone(model_path, attribute_path="", autotune_mode=False, config_path=None, togsim_path=None):
         """
@@ -545,6 +610,7 @@ class TOGSimulator():
             logger.info(f'[TOGSim] Simulation log{model_path_log}is stored to "{result_path}"')
         return result_path
 
+    # Parse a TOGSim result log file and extracts performance metrics
     @staticmethod
     def get_result_from_file(result_path):
         core_metrics = {}

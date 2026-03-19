@@ -1,3 +1,5 @@
+// It acts as the main port for communicating with TOGSim Simulator
+
 #include <fstream>
 #include <chrono>
 #include <filesystem>
@@ -13,6 +15,8 @@ namespace fs = std::filesystem;
 namespace po = boost::program_options;
 
 
+// Launch kernel through simulator with onnx_path and config_path at reqeust time in partition_id partition
+// It parses onnx_path and attribute_path, and config_path into TileGraph and run Tile graph
 void launchKernel(Simulator* simulator, unsigned int kernel_id, std::string onnx_path, std::string attribute_path, const YAML::Node& config_yaml, cycle_type request_time=0, int partiton_id=0, int device_id=0) {
   auto graph_praser = TileGraphParser(onnx_path, attribute_path, config_yaml);
   std::unique_ptr<TileGraph>& tile_graph = graph_praser.get_tile_graph();
@@ -22,6 +26,12 @@ void launchKernel(Simulator* simulator, unsigned int kernel_id, std::string onnx
   simulator->enqueue_graph(partiton_id, std::move(tile_graph));
 }
 
+
+// Open a trace file (regular file or FIFO) and reads it line by line. Each line is a CSV command with 7 fields.
+// Format of each line in trace file: command_type, kernel_id, device_index, stream_index, tog_path, attribute_path, timestamp
+// A trace file is a scenario script that describes "which kernel to run, when, and on which device/stream."
+// For LAUNCH_KERNEL commands it calls launchKernel; for DEVICE_SYNC it runs simulator->cycle() to synchronize
+// After all lines are processed, it runs one final cycle()
 void process_trace_file(Simulator* simulator, std::string trace_file_path, const YAML::Node& config_yaml) {
   // Open trace file (can be FIFO or regular file)
   std::ifstream trace_file;
@@ -84,6 +94,8 @@ void process_trace_file(Simulator* simulator, std::string trace_file_path, const
   simulator->cycle();
 }
 
+
+// A factory function that takes a YAML config node, initializes a SimulationConfig from it, and returns a heap-allocated Simulator object
 Simulator* create_simulator(const YAML::Node& config_yaml) {
   SimulationConfig config = initialize_config(config_yaml);
 
@@ -91,6 +103,10 @@ Simulator* create_simulator(const YAML::Node& config_yaml) {
   return simulator;
 }
 
+
+// The entry point that orchestrates everything: parses command-line arguments (config, models_list, log_level), sets the log level, 
+// loads the YAML config, creates the simulator, processes the trace file, prints statistics, and measures total wall-clock time
+// Trace file(commands set) is obtained through arguments
 int main(int argc, char** argv) {
   auto start = std::chrono::high_resolution_clock::now();
   // parse command line argumnet

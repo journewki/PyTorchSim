@@ -1,3 +1,5 @@
+// Some miscellaneous methods for parsing json config and making SimulationConfig
+
 #include "Common.h"
 
 bool loadConfig(const std::string& config_path, YAML::Node& config_yaml) {

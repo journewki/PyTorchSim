@@ -1,5 +1,8 @@
-# This code defines Scheduler class, which is the most frontend code to TOGSim simulator
-# Scheduler receives requests and schedule them into kernels and generate TOGSim object and execute kernels through the simulator
+# This code defines the Scheduler class, which simulates an inference serving system on top of TOGSim.
+# Scheduler receives inference requests (with arrival times), batches them by model, and dispatches
+# them to PyTorchSimRunner which compiles each model into a sequence of kernels.
+# Kernels are then executed one by one through TOGSim in FIFO or Round-Robin order,
+# enabling performance evaluation metrics such as response time, turnaround time, and TBT (Time Between Tokens).
 
 from typing import List
 import os

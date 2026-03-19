@@ -1,3 +1,7 @@
+// Define TileNode, TileGraphParser, TileComputeNode, TileMemoryNod, TileMemoryWaitNode, TileLoopNode, TileLoopEndNode, TileStonneMode classes. 
+// Those classes are C++ runtime data structures all needed to convert TOG in ONNX file into C++ TileGraph(including TileSubgraph > Tile > instructions) object so that TOGSim can run using them. 
+
+
 #include "TileGraphParser.h"
 
 void printIndexMap(std::string prefix, const std::map<std::string, int>& indexMap) {

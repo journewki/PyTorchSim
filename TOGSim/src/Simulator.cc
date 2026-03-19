@@ -1,26 +1,41 @@
+// Define Simulator class, which is the whole configuration of each components into one simulator. Technically, this is the very body of TOGSim simulator. 
+
 #include "Simulator.h"
+
+
+// Initialize attributes and create core, DRAM, interconnect inside Simulator object following config
+// Then, initialize scheduler per partition
+// Core is made in WS_MESH or STONNE, and DRAM is made in SIMPLE or Ramulator2, and interconnect is made into SIMPLE or Booksim2 configuraiton(which are all external simulators)
 
 Simulator::Simulator(SimulationConfig config)
     : _config(config), _core_cycles(0) {
   // Create dram object
-  _core_period = 1000000 / (config.core_freq_mhz);
-  _icnt_period = 1000000 / (config.icnt_freq_mhz);
-  _dram_period = 1000000 / (config.dram_freq_mhz);
-  _core_time = 0;
+  _core_period = 1000000 / (config.core_freq_mhz); // Period of one cycle for core 
+  _icnt_period = 1000000 / (config.icnt_freq_mhz); // Period of one cycle for icnt
+  _dram_period = 1000000 / (config.dram_freq_mhz); // Period of one cycle for dram
+
+  // Accumulated time(== time for next execution) of core, dram, icnt
+  // Accumulated time are because of different cycles of components. At every t, find the component with smallest accumulated time and execute the component and add period.
+  _core_time = 0; 
   _dram_time = 0;
   _icnt_time = 0;
-  _slot_id = 0;
-  _max_slot = 2;
-  _n_cores = config.num_cores;
-  _n_memories = config.dram_channels;
-  _memory_req_size = config.dram_req_size;
-  _noc_node_per_core = config.icnt_injection_ports_per_core;
-  char* onnxim_path_env = std::getenv("TORCHSIM_DIR");
-  std::string onnxim_path = onnxim_path_env != NULL?
+
+
+  // Slot is a double-buffer index (0 or 1, _max_slot = 2) used to overlap tile preparation with tile execution — essentially n-buffering for tile
+  // Slot is per-core. Each individual core has 2 tile slots — it can hold up to 2 in-flight tiles at once (double-buffering).
+  _slot_id = 0; // Current slot IDs for time-division multiplexing tile execution → n-buffering/stream for tile
+  _max_slot = 2; // Max slot IDs for time-division multiplexing tile execution
+  _n_cores = config.num_cores; // Number of cores in the system defined in config
+  _n_memories = config.dram_channels; // Number of dram in the system defined in config
+  _memory_req_size = config.dram_req_size; // Size of each memory request
+  _noc_node_per_core = config.icnt_injection_ports_per_core; Number of NoC injection ports per core
+  char* onnxim_path_env = std::getenv("TORCHSIM_DIR"); // Path of onnxim(== TOGSim) 
+  std::string onnxim_path = onnxim_path_env != NULL? //Path of onnxim(== TOGSim) 
     std::string(onnxim_path_env): std::string("./");
 
+
   // Create core objects
-  _cores.resize(_n_cores);
+  _cores.resize(_n_cores); // Vector of core objects (either WS_MESH or STONNE type)
   for (int core_index = 0; core_index < _n_cores; core_index++) {
     if (config.core_type[core_index] == CoreType::WS_MESH) {
       spdlog::info("[Config/Core] Core {}: {} MHz, Systolic array per core: {}",
@@ -36,7 +51,7 @@ Simulator::Simulator(SimulationConfig config)
   }
 
   if (config.dram_type == DramType::SIMPLE) {
-    _dram = std::make_unique<SimpleDRAM>(config, &_core_cycles);
+    _dram = std::make_unique<SimpleDRAM>(config, &_core_cycles); // DRAM subsystem (SimpleDRAM or Ramulator2)
   } else if (config.dram_type == DramType::RAMULATOR2) {
     std::string ramulator_config = fs::path(onnxim_path)
                                        .append("configs")
@@ -54,6 +69,7 @@ Simulator::Simulator(SimulationConfig config)
   }
 
   // Create interconnect object
+  // Interconnect network (SimpleInterconnect or Booksim2)
   spdlog::info("[Config/Interconnect] Interconnect freq: {} MHz", config.icnt_freq_mhz);
   if (config.icnt_type == IcntType::SIMPLE) {
     spdlog::info("[Config/Interconnect] SimpleInerconnect selected");
@@ -72,11 +88,15 @@ Simulator::Simulator(SimulationConfig config)
     _partition_scheduler.push_back(std::make_unique<Scheduler>(Scheduler(config, &_core_cycles, &_core_time, i)));
 }
 
+// Run one cycle of the simulator(all components that have to run) by simply calling cycle() of Simulator object
 void Simulator::run_simulator() {
   spdlog::info("======Start Simulation=====");
   cycle();
 }
 
+// Simulate one cycle for every slot's every core
+// Alternate slot per every cycle and bring new tile from the slot and issue the tile to each core and collect finished tile
+// Proceed one cycle for every core(by calling each core's cycle()) and DRAM L2 cache
 void Simulator::core_cycle() {
   for (int i=0; i<_max_slot; i++, _slot_id=(_slot_id + 1) % _max_slot) {
     // Issue new tile to core
@@ -105,10 +125,16 @@ void Simulator::core_cycle() {
   _core_cycles++;
 }
 
+
+// Proceed one cycle for DRAM by calling cycle() of _dram object
 void Simulator::dram_cycle() {
   _dram->cycle();
 }
 
+
+// Proceed one cycle for every icnt component(each core’s every noc node)
+// Specifically, push/pull memory request/response between core <-> icnt and icnt <-> memory
+// And get icnt stat per _icnt_interval(bw of each connection), then  call cycle() of _icnt 
 void Simulator::icnt_cycle() {
   _icnt_cycle++;
 
@@ -170,6 +196,9 @@ void Simulator::icnt_cycle() {
   _icnt->cycle();
 }
 
+
+
+// Proceed one cycle by running a cycle of components that should run in this cycle
 void Simulator::cycle() {
   while (running() || _core_cycles < 1) {
     set_cycle_mask();
@@ -190,6 +219,7 @@ void Simulator::cycle() {
   }
 }
 
+// Return whether simulator is running or not (at least one component)
 bool Simulator::running() {
   bool running = false;
   for (auto &core : _cores) {
@@ -203,6 +233,9 @@ bool Simulator::running() {
   return running;
 }
 
+
+// Indicate which components are running at current cycle
+// Then, update next xx_time, which is the next working time for each component
 void Simulator::set_cycle_mask() {
   _cycle_mask = 0x0;
   uint64_t minimum_time = MIN3(_core_time, _dram_time, _icnt_time);
@@ -220,6 +253,9 @@ void Simulator::set_cycle_mask() {
   }
 }
 
+
+// Get destination node ID where memory request/response should head to
+// 0 ~ (num_cores * noc_node_per_core - 1) are NoC nodes(=core nodes) and num_cores * noc_node_per_core ~ are memory nodes
 uint32_t Simulator::get_dest_node(mem_fetch *access) {
   switch (access->get_type())
   {
@@ -238,6 +274,7 @@ uint32_t Simulator::get_dest_node(mem_fetch *access) {
   }
 }
 
+// Print stats of every component and total excution cycle == _core_cycles
 void Simulator::print_core_stat()
 {
   _icnt->print_stats();

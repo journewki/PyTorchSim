@@ -1,3 +1,5 @@
+// Helper code for hashing functions for mapping memory addresses to DRAM bank indices
+
 // author: Mahmoud Khairy, (Purdue Univ)
 // email: abdallm@purdue.edu
 

@@ -1,3 +1,7 @@
+# Generates the C host code that invokes compiled RISC-V MLIR kernels.
+# Produces main() functions that load/store tensor arguments, set up memory
+# addresses, and call the LLVM-compiled kernel entry point.
+
 import os
 import math
 import subprocess

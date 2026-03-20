@@ -1,3 +1,7 @@
+# Manages the MLIR-to-RISC-V compilation pipeline and code caching. Builds
+# shell commands for mlir-opt, mlir-translate, and llc, compiles kernels
+# to RISC-V assembly, and invokes Gem5/Spike/TOGSim simulation stages.
+
 import os
 import re
 import shlex

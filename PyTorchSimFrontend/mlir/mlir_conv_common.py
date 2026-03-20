@@ -1,3 +1,7 @@
+# Abstract base class for all Conv2D MLIR templates. Provides shared logic for
+# extracting convolution parameters, computing padded input sizes, selecting
+# tile candidates, and rendering the outer wrapper function.
+
 import os
 import math
 from typing import List, Optional
@@ -113,6 +117,9 @@ class MLIRConvCommonTemplate(MLIRTemplate):
             return stride
 
         X_stride = compute_stride(X_shape)
-        arg_attributes.append([X.data.data.name, [MLIRKernelArgs.MLIR_ARGS_IN, X.layout.dtype, math.prod(X_shape), X_shape, X_stride]])
+        inner = X.data
+        while not hasattr(inner, 'name'):
+            inner = inner.data
+        arg_attributes.append([inner.name, [MLIRKernelArgs.MLIR_ARGS_IN, X.layout.dtype, math.prod(X_shape), X_shape, X_stride]])
 
         return arg_attributes

@@ -1,3 +1,7 @@
+# Defines the MLIRBenchmarkRequest class for autotuning tile configurations.
+# Compiles and runs candidate kernels through the TOGSim simulator to measure
+# cycle counts and select the best-performing tile mapping.
+
 import functools
 import torch
 import os

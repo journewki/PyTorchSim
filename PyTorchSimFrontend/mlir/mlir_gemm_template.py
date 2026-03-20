@@ -1,3 +1,7 @@
+# MLIR template for GEMM (matrix multiply) kernels. Defines tiled GEMM MLIR IR
+# templates with configurable tile sizes, DMA operations, and optional epilogue
+# and prologue fusion, plus heuristic/autotune tile selection logic.
+
 import json
 from pathlib import Path
 from torch import empty_strided

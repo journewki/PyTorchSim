@@ -1,3 +1,7 @@
+# Single-batch strided Conv2D MLIR template for convolutions with stride > 1
+# and batch_size=1. Adapts the DMA tiling to handle non-unit strides in the
+# spatial dimensions while keeping the single-batch optimization.
+
 from sympy import  Symbol, Number
 from typing import List, Optional
 

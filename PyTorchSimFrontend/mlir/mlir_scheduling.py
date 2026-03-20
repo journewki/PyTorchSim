@@ -1,3 +1,7 @@
+# Implements the MLIR scheduling backend for PyTorch Inductor. Controls kernel
+# fusion decisions, flush timing, and dispatches fused/unfused scheduler nodes
+# to the MLIRKernel code generator.
+
 import os
 import math
 import sympy

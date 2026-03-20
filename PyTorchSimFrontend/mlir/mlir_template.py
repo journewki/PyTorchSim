@@ -1,3 +1,7 @@
+# Base class for MLIR kernel templates (MLIRTemplate, MLIRTemplateKernel).
+# Provides Jinja2-based rendering, tile candidate generation, epilogue fusion,
+# DMA operation codegen, and integration with the autotuning framework.
+
 import functools
 import itertools
 import textwrap

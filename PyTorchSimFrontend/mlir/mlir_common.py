@@ -1,3 +1,7 @@
+# Core MLIR code generation infrastructure: dtype mappings, tile descriptors,
+# loop nest structures, kernel argument management, SRAM buffer planning,
+# and the MLIRKernel base class used by all MLIR backend kernels.
+
 import dataclasses
 import math
 import contextvars

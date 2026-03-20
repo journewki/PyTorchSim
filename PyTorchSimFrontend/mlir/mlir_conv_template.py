@@ -1,3 +1,7 @@
+# Standard Conv2D MLIR template with full spatial tiling across batch, output
+# channels, height, width, and kernel dimensions. Used as the default
+# convolution implementation when no specialized variant applies.
+
 from sympy import  Symbol, Number
 from typing import List, Optional
 

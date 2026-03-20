@@ -1,3 +1,7 @@
+# Single-batch Conv2D MLIR template optimized for batch_size=1. Removes the
+# batch loop and tiles output width as the M dimension of the systolic array,
+# enabling better utilization for single-image inference.
+
 from sympy import  Symbol, Number
 from typing import List, Optional
 

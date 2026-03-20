@@ -1,3 +1,7 @@
+# MLIR template for 2D max pooling operations. Generates DMA-based tiled
+# data movement for the pooling window; the actual max reduction is handled
+# by the VPU during simulation.
+
 from typing import List, Optional, cast
 
 from PyTorchSimFrontend.mlir.mlir_template import MLIRTemplate

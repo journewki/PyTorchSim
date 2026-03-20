@@ -1,3 +1,7 @@
+# Multi-tile Conv2D MLIR template that merges the kernel-width and input-channel
+# dimensions into a single tile axis. Optimized for convolutions where K_W * I_C
+# fits within a single systolic array tile.
+
 from sympy import  Symbol, Number
 from typing import List, Optional
 

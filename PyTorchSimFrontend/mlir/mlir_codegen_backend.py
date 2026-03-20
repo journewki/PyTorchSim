@@ -1,3 +1,7 @@
+# Main MLIR code generation backend for PyTorch Inductor. Implements the wrapper
+# codegen, scheduler integration, and MLIRKernel class that emits MLIR IR for
+# pointwise, reduction, and template-based operations on the simulated NPU.
+
 import contextlib
 import sympy
 import sys

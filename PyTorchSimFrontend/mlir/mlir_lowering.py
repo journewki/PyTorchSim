@@ -1,3 +1,7 @@
+# Registers PyTorch Inductor lowerings for matrix and convolution ops (mm, addmm,
+# bmm, convolution, max_pool2d) so they produce MLIR template-based kernels
+# instead of the default Inductor code generation.
+
 from typing import List, Optional, Sequence
 
 import torch

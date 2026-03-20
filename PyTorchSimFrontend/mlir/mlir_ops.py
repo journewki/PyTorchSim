@@ -1,3 +1,7 @@
+# Implements MLIR operation overrides for PyTorch Inductor's code generation.
+# Maps arithmetic, logic, comparison, cast, and reduction operations to their
+# MLIR dialect equivalents (arith, math, vector ops).
+
 import math
 import torch
 import warnings

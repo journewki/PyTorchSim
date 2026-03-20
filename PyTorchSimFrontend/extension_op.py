@@ -1,3 +1,7 @@
+# Defines custom PyTorch operator kernels (e.g., GEMM, sparse MM) that run on the
+# simulated NPU device. Handles TOG graph generation, sparse matrix formatting,
+# and dispatching compiled kernels through the TOGSim simulator.
+
 import os
 import subprocess
 import math

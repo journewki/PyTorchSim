@@ -1,3 +1,6 @@
+# Registers decomposition rules for composite PyTorch ops (e.g., multi-head
+# attention) into simpler operations that the MLIR backend can lower and compile.
+
 import math
 import torch
 import torch.nn.functional as F

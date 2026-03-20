@@ -28,9 +28,9 @@ Simulator::Simulator(SimulationConfig config)
   _n_cores = config.num_cores; // Number of cores in the system defined in config
   _n_memories = config.dram_channels; // Number of dram in the system defined in config
   _memory_req_size = config.dram_req_size; // Size of each memory request
-  _noc_node_per_core = config.icnt_injection_ports_per_core; Number of NoC injection ports per core
-  char* onnxim_path_env = std::getenv("TORCHSIM_DIR"); // Path of onnxim(== TOGSim) 
-  std::string onnxim_path = onnxim_path_env != NULL? //Path of onnxim(== TOGSim) 
+  _noc_node_per_core = config.icnt_injection_ports_per_core; // Number of NoC injection ports per core
+  char* onnxim_path_env = std::getenv("TORCHSIM_DIR"); // Path of onnxim(== TOGSim)
+  std::string onnxim_path = onnxim_path_env != NULL ? // Path of onnxim(== TOGSim)
     std::string(onnxim_path_env): std::string("./");
 
 

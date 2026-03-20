@@ -1,3 +1,6 @@
+# Temporary compatibility shim providing sympy helper functions (free_symbol_startswith,
+# sympy_symbol) that were removed or changed between PyTorch 2.2 and 2.8.
+
 import sympy
 import torch
 

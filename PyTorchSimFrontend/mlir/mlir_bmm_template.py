@@ -1,3 +1,7 @@
+# MLIR template for batched matrix multiply (BMM) kernels. Extends the GEMM
+# template with an outer batch loop dimension and supports prologue fusion
+# for batched attention-style workloads.
+
 import os
 from torch import empty_strided
 from typing import List, Optional

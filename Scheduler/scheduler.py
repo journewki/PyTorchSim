@@ -199,7 +199,7 @@ class PyTorchSimRunner:
         # Generator will return each layer’s kernels and inputs when called, and kernel is an object compiled by Pytorch Inductor representing each computation
         self.launch_model_dicts = [] 
         self.nested_launch_model_dicts = [] # Same with launch_model_dicts  ut a model nests several models inside 
-        self.partition_state = [] List of states of each partition
+        self.partition_state = [] # List of states of each partition
         for i in range(self.num_partion):
             self.launch_model_dicts.append({})
             self.nested_launch_model_dicts.append({})

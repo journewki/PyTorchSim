@@ -1,3 +1,7 @@
+# Loads and exposes NPU hardware configuration from YAML config files and
+# environment variables. Provides lazy attribute access for hardware parameters
+# (core count, VPU lanes, SPAD info), compiler optimization flags, and paths.
+
 import os
 import sys
 import importlib

@@ -391,6 +391,8 @@ def run_sana_linear_attention_test(device, rtol=1e-3, atol=1e-3):
     batch, seq = 1, 64  # 8x8 patches
     g = torch.Generator().manual_seed(0)
     x_cpu = torch.randn(batch, seq, dim, generator=g)
+
+    
     x_dev = x_cpu.to(device)
 
     out_cpu = cpu_attn(x_cpu)

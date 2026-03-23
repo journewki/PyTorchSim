@@ -18,6 +18,7 @@ from PyTorchSimFrontend.mlir.mlir_conv_template import MLIRConvTemplate
 from PyTorchSimFrontend.mlir.mlir_conv_mt_template import MLIRConvMultiTileTemplate
 from PyTorchSimFrontend.mlir.mlir_conv_sb_template import MLIRConvSingleBatchTemplate
 from PyTorchSimFrontend.mlir.mlir_conv_sbs_template import MLIRConvSingleBatchStridedTemplate
+from PyTorchSimFrontend.mlir.mlir_conv_depthwise_template import MLIRConvDepthwiseTemplate
 from PyTorchSimFrontend.mlir.mlir_maxpool_template import MLIRMaxPoolTemplate
 from PyTorchSimFrontend import extension_config
 
@@ -110,7 +111,9 @@ def convolution(
     layout = conv_layout(x, weight, None, **kwargs)
 
     # Select conv kernel
-    if BATCH == 1 and stride[0] == 1 and extension_config.CONFIG_SINGLE_BATCH_CONV:
+    if groups > 1:
+        mlir_template = MLIRConvDepthwiseTemplate([x, weight, bias], layout, **kwargs)
+    elif BATCH == 1 and stride[0] == 1 and extension_config.CONFIG_SINGLE_BATCH_CONV:
         mlir_template = MLIRConvSingleBatchTemplate([x, weight, bias], layout, **kwargs)
     elif BATCH == 1 and stride[0] != 1 and extension_config.CONFIG_SINGLE_BATCH_CONV:
         mlir_template = MLIRConvSingleBatchStridedTemplate([x, weight, bias], layout, **kwargs)

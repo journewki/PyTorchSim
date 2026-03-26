@@ -86,6 +86,9 @@ class MLIRConvCommonTemplate(MLIRTemplate):
         Y = self.output_node
         Bias = None if len(self.input_nodes) == 2 else self.input_nodes[2]
 
+        I_H = int(X.get_size()[2])
+        I_W = int(X.get_size()[3])
+
         options = dict(
             kernel=self.kernel,
             KERNEL_NAME=kernel_name,
@@ -96,6 +99,8 @@ class MLIRConvCommonTemplate(MLIRTemplate):
             OUTPUT=Y,
             PADDING_H=self.padding[0],
             PADDING_W=self.padding[1],
+            I_H=I_H,
+            I_W=I_W,
             VALIDATION_MODE=extension_config.pytorchsim_functional_mode,
             input_reorder=self.input_reorder
         )

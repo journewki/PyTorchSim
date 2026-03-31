@@ -300,3 +300,4 @@ def sparse_mm_dummy_stonne_outer(a, b, out):
 custom_lib.define("_sparse_mm(Tensor a, Tensor b, Tensor out) -> Tensor")
 custom_lib.impl("_sparse_mm", sparse_mm_stonne_outer, "PrivateUse1")
 custom_lib.impl("_sparse_mm", sparse_mm_stonne_outer, "AutogradPrivateUse1")
+

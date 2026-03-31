@@ -179,11 +179,13 @@ std::shared_ptr<std::set<addr_type>> Instruction::get_dram_address(addr_type dra
     for (int dim1=0; dim1<tile_size.at(1); dim1++) {
       for (int dim2=0; dim2<tile_size.at(2); dim2++) {
         for (int dim3=0; dim3<tile_size.at(3); dim3++) {
-          addr_type address = dim0*tile_stride.at(tile_stride.size() - 4) + \
-                              dim1*tile_stride.at(tile_stride.size() - 3) + \
-                              dim2*tile_stride.at(tile_stride.size() - 2) + \
-                              dim3*tile_stride.at(tile_stride.size() - 1);
-          address = dram_addr + address * _precision;
+          // Use signed arithmetic to correctly handle negative strides
+          // (e.g. from tensor.flip() or transposed layouts).
+          int64_t signed_offset = (int64_t)dim0 * tile_stride.at(tile_stride.size() - 4) +
+                                  (int64_t)dim1 * tile_stride.at(tile_stride.size() - 3) +
+                                  (int64_t)dim2 * tile_stride.at(tile_stride.size() - 2) +
+                                  (int64_t)dim3 * tile_stride.at(tile_stride.size() - 1);
+          addr_type address = dram_addr + (addr_type)(signed_offset * (int64_t)_precision);
           if (indirect_index != NULL) {
             uint64_t index_val = indirect_index[index_count++];
             address += index_val * _precision;

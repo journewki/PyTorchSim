@@ -6,6 +6,8 @@ from typing import List, Optional, Sequence
 
 import torch
 from torch._inductor.lowering import lowerings, index_impl
+import logging
+logger = logging.getLogger(__name__)
 from torch._inductor.kernel.mm_common import mm_args
 # from torch._inductor.select_algorithm import ExternKernelChoice
 from torch._inductor import ir
@@ -18,6 +20,7 @@ from PyTorchSimFrontend.mlir.mlir_conv_template import MLIRConvTemplate
 from PyTorchSimFrontend.mlir.mlir_conv_mt_template import MLIRConvMultiTileTemplate
 from PyTorchSimFrontend.mlir.mlir_conv_sb_template import MLIRConvSingleBatchTemplate
 from PyTorchSimFrontend.mlir.mlir_conv_sbs_template import MLIRConvSingleBatchStridedTemplate
+from PyTorchSimFrontend.mlir.mlir_conv_depthwise_template import MLIRConvDepthwiseTemplate
 from PyTorchSimFrontend.mlir.mlir_maxpool_template import MLIRMaxPoolTemplate
 from PyTorchSimFrontend import extension_config
 
@@ -108,6 +111,11 @@ def convolution(
     I_C = x.layout.size[1]
     weight = ir.ExternKernel.require_channels_last(weight)
     layout = conv_layout(x, weight, None, **kwargs)
+
+    # Route grouped/depthwise convolutions to the dedicated depthwise template
+    if groups > 1:
+        mlir_template = MLIRConvDepthwiseTemplate([x, weight, bias], layout, **kwargs)
+        return mlir_template.generate().output_node()
 
     # Select conv kernel
     if BATCH == 1 and stride[0] == 1 and extension_config.CONFIG_SINGLE_BATCH_CONV:

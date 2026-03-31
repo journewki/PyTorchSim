@@ -176,6 +176,7 @@ class FalqonLinearEmulated(nn.Module):
         self.out_features = out_features
         self.rank = rank
 
+
         # [out_features + rank, in_features] — frozen
         self.weight = nn.Parameter(
             torch.zeros(out_features + rank, in_features), requires_grad=False

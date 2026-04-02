@@ -9,7 +9,7 @@
 	url = https://github.com/PSAL-POSTECH/booksim.git
 [submodule "TOGSim/extern/ramulator2"]
 	path = TOGSim/extern/ramulator2
-	url = git@github.com:journewki/ramulator2.git
+	url = https://github.com/PSAL-POSTECH/ramulator2.git
 [submodule "TOGSim/extern/stonneCore"]
 	path = TOGSim/extern/stonneCore
 	url = https://github.com/PSAL-POSTECH/stonne_core.git
